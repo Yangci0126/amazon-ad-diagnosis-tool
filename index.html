@@ -48,7 +48,7 @@
   .upload-zone.has-file{border-style:solid;border-color:var(--green);color:var(--green)}
   .file-hint{font-size:12px;color:var(--muted);margin-top:10px}
 
-  .kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
   .kpi-item{border-radius:16px;padding:14px 16px;border:1px solid var(--line);background:var(--card);position:relative;overflow:hidden}
   .kpi-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px}
   .kpi-item .label{font-size:12px;color:var(--muted)}
@@ -65,10 +65,11 @@
 
   .filterbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;padding:12px;background:var(--bg);border-radius:14px}
   .filterbar select,.filterbar input{height:36px;border:1px solid var(--line);border-radius:10px;padding:0 10px;font-size:13px;background:var(--card);color:var(--text)}
+  .filterbar select{width:150px;min-width:150px}
   .filterbar select:focus,.filterbar input:focus{outline:none;border-color:var(--primary)}
   .filterbar input.search{flex:1;min-width:160px}
   .fgroup{display:flex;align-items:center;gap:6px}
-  .fgroup .flabel{font-size:12px;color:var(--muted);white-space:nowrap}
+  .fgroup .flabel{font-size:12px;color:var(--muted);white-space:nowrap;width:52px;text-align:right}
 
   .table-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
   #rowCount{color:var(--muted);font-size:13px}
@@ -81,9 +82,10 @@
   tbody td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;height:52px;vertical-align:middle}
   tbody td:first-child{text-align:left}
   tbody tr:hover{background:var(--bg)}
-  td.kw{max-width:260px;line-height:1.4}
+  td.kw{max-width:250px;line-height:1.4}
   td.mt{white-space:nowrap}
-  td.advice{text-align:left;max-width:340px;color:var(--muted);line-height:1.4}
+  td.tags{text-align:left;white-space:nowrap}
+  td.advice{text-align:left;max-width:300px;color:var(--muted);line-height:1.4}
   .clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
 
   .tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;white-space:nowrap;font-weight:600}
@@ -98,7 +100,6 @@
 
   .empty{padding:40px;text-align:center;color:var(--muted)}
 
-  /* 设置弹窗 */
   .modal-mask{position:fixed;inset:0;background:rgba(20,10,30,.5);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:100}
   .modal-mask.show{display:flex}
   .modal{background:var(--card);border-radius:22px;padding:24px;width:360px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3);border:1px solid var(--line)}
@@ -189,7 +190,6 @@
 </div>
 
 <script>
-/* ============ 字段映射 ============ */
 const FIELD_MAP = {
   '广告组合名称':'portfolio','广告活动名称':'campaign','广告组名称':'adGroup','投放':'targeting',
   '匹配类型':'matchType','客户搜索词':'keyword','展示量':'impressions','点击量':'clicks',
@@ -212,22 +212,20 @@ const TAG_META = {
 const MATCH_TYPE_ZH = { 'EXACT':'精确','PHRASE':'短语','BROAD':'广泛','NEGATIVE_EXACT':'否定精确','NEGATIVE_PHRASE':'否定短语','NEGATIVE_BROAD':'否定广泛','asinSameAs':'商品','asinExpandedFrom':'商品拓展','asinCategorySameAs':'类目' };
 
 let rawRows = [];
-let portfolioTotals = new Map();  // portfolio -> {clicks, units}
+let portfolioTotals = new Map();
 let overallCvr = 0;
 let currentDim = 'keyword';
-let sortState = { field:'ctr', dir:-1 };   // 默认点击率降序
+let sortState = { field:'clicks', dir:-1 };   // 默认点击量降序
 let filterOptions = { portfolio:[], campaign:[], adGroup:[], targeting:[] };
-
 let settings = { sampleClicks:10, redClicks:30, targetAcos:30, redAcos:45, darkMode:false };
 
 const $ = id => document.getElementById(id);
 function num(v){ const n = parseFloat(String(v).replace(/[,%$￥¥]/g,'')); return isNaN(n)?0:n; }
+function escAttr(s){ return String(s).replace(/"/g,'&quot;'); }
 
 /* ============ 设置 & 暗黑模式 ============ */
 function loadSettings(){
-  try{ const s = JSON.parse(localStorage.getItem('adx_settings')||'{}');
-    settings = Object.assign({}, settings, s);
-  }catch(e){}
+  try{ const s = JSON.parse(localStorage.getItem('adx_settings')||'{}'); settings = Object.assign({}, settings, s); }catch(e){}
   if(settings.darkMode) document.documentElement.setAttribute('data-theme','dark');
   else document.documentElement.removeAttribute('data-theme');
   $('darkSwitch').classList.toggle('on', settings.darkMode);
@@ -299,7 +297,6 @@ function parseRows(aoa){
   }
   if(!rawRows.length) return alert('未解析到有效数据行');
 
-  // 组合整体转化率（需求8）
   portfolioTotals = new Map();
   let tc=0, tu=0;
   for(const r of rawRows){
@@ -311,7 +308,6 @@ function parseRows(aoa){
   }
   overallCvr = tc>0 ? tu/tc*100 : 0;
 
-  // 构建筛选选项
   const sets = { portfolio:new Set(), campaign:new Set(), adGroup:new Set(), targeting:new Set() };
   for(const r of rawRows){
     if(r.portfolio) sets.portfolio.add(String(r.portfolio).trim());
@@ -321,6 +317,10 @@ function parseRows(aoa){
   }
   filterOptions = { portfolio:[...sets.portfolio].sort(), campaign:[...sets.campaign].sort(),
                     adGroup:[...sets.adGroup].sort(), targeting:[...sets.targeting].sort() };
+
+  // 重置筛选
+  ['fPortfolio','fCampaign','fAdGroup','fTargeting','fTag'].forEach(id => $(id).value = '');
+  $('searchBox').value = '';
   buildFilterSelects();
   render();
 }
@@ -330,16 +330,27 @@ function buildFilterSelects(){
   fillSelect($('fCampaign'), filterOptions.campaign);
   fillSelect($('fAdGroup'), filterOptions.adGroup);
   fillSelect($('fTargeting'), filterOptions.targeting);
-  const tags = Object.keys(TAG_META).map(k => '<option value="'+k+'">'+TAG_META[k].label+'</option>').join('');
-  $('fTag').innerHTML = '<option value="">全部标签</option>' + tags;
+  $('fTag').innerHTML = '<option value="">全部标签</option>' + Object.keys(TAG_META).map(k => '<option value="'+k+'">'+TAG_META[k].label+'</option>').join('');
 }
 function fillSelect(sel, arr){
   const cur = sel.value;
-  sel.innerHTML = '<option value="">全部</option>' + arr.map(v => '<option value="'+v.replace(/"/g,'&quot;')+'">'+v+'</option>').join('');
+  sel.innerHTML = '<option value="">全部</option>' + arr.map(v => '<option value="'+escAttr(v)+'">'+v+'</option>').join('');
   sel.value = cur;
 }
 
-/* ============ 聚合 & 计算 ============ */
+/* ============ 筛选级联 ============ */
+function candidates(field, conds){
+  let rows = rawRows;
+  for(const [f,v] of conds) if(v) rows = rows.filter(r => String(r[f]||'').trim()===v);
+  return [...new Set(rows.map(r => String(r[field]||'').trim()).filter(Boolean))].sort();
+}
+function refreshCascade(){
+  const fp = $('fPortfolio').value, fc = $('fCampaign').value, fa = $('fAdGroup').value;
+  fillSelect($('fCampaign'), candidates('campaign', [['portfolio',fp]]));
+  fillSelect($('fAdGroup'), candidates('adGroup', [['portfolio',fp],['campaign',fc]]));
+  fillSelect($('fTargeting'), candidates('targeting', [['portfolio',fp],['campaign',fc],['adGroup',fa]]));
+}
+
 function getFilteredRows(){
   let rows = rawRows;
   const fp = $('fPortfolio').value, fc = $('fCampaign').value, fa = $('fAdGroup').value, ft = $('fTargeting').value;
@@ -350,6 +361,7 @@ function getFilteredRows(){
   return rows;
 }
 
+/* ============ 聚合 & 计算 ============ */
 function aggregate(rows, field){
   const map = new Map();
   for(const r of rows){
@@ -373,8 +385,6 @@ function compute(g){
   g.price = g.units>0 ? g.sales/g.units : 0;
   return g;
 }
-
-// 该搜索词所属组合的整体转化率（需求8）
 function groupCvr(g){
   let c=0, u=0;
   for(const p of g.portfolios){
@@ -404,9 +414,9 @@ function tag(g, dimKey){
   return tags;
 }
 
-/* ============ 建议引擎 ============ */
+/* ============ 建议引擎（搜索词 + 投放） ============ */
 function advice(g, tags, dimKey){
-  if(dimKey !== 'keyword') return '';
+  if(dimKey !== 'keyword' && dimKey !== 'targeting') return '';
   const sc = settings.sampleClicks, ta = settings.targetAcos, ra = settings.redAcos;
   const cvr = g.cvr, price = g.price;
   const hasExact = [...g.matchTypes].some(m => m.includes('EXACT'));
@@ -431,6 +441,31 @@ function advice(g, tags, dimKey){
   }
   if(tags.includes('insufficient')) return '等待数据积累';
   return '';
+}
+
+/* ============ 列定义（动态） ============ */
+function getCols(){
+  const dim = DIMENSIONS.find(d => d.key===currentDim);
+  const hasAdvice = (currentDim==='keyword' || currentDim==='targeting');
+  const cols = [
+    { label: dim.label, field: '_key', csv: g => cleanKw(g.key) },
+    { label: '标签', field: 'tags', csv: g => g.tags.map(t => TAG_META[t].label).join('|') }
+  ];
+  if(hasAdvice) cols.push({ label: '建议', field: 'advice', csv: g => g.advice });
+  cols.push(
+    { label: '匹配类型', field: 'matchType', csv: g => matchTypeZh(g) },
+    { label: '展示量', field: 'impressions', csv: g => g.impressions },
+    { label: '点击量', field: 'clicks', csv: g => g.clicks },
+    { label: '点击率', field: 'ctr', csv: g => g.ctr.toFixed(2) },
+    { label: '花费', field: 'spend', csv: g => g.spend.toFixed(2) },
+    { label: 'CPC', field: 'cpc', csv: g => g.cpc.toFixed(2) },
+    { label: '销售额', field: 'sales', csv: g => g.sales.toFixed(2) },
+    { label: '销量', field: 'units', csv: g => g.units },
+    { label: '转化率', field: 'cvr', csv: g => g.cvr.toFixed(2) },
+    { label: 'ACOS', field: 'acos', csv: g => g.acos.toFixed(2) },
+    { label: 'ROAS', field: 'roas', csv: g => g.roas.toFixed(2) }
+  );
+  return cols;
 }
 
 /* ============ 渲染 ============ */
@@ -461,16 +496,12 @@ function renderKpi(groups){
     a.spend+=g.spend; a.sales+=g.sales; a.clicks+=g.clicks; a.units+=g.units; a.impressions+=g.impressions;
     return a;
   }, {spend:0,sales:0,clicks:0,units:0,impressions:0});
-  const ctr = t.impressions>0 ? t.clicks/t.impressions*100 : 0;
-  const cpc = t.clicks>0 ? t.spend/t.clicks : 0;
   const cvr = t.clicks>0 ? t.units/t.clicks*100 : 0;
   const acos = t.sales>0 ? t.spend/t.sales*100 : 0;
   const items = [
     { label:'总销售额', val:'$'+t.sales.toFixed(2) },
     { label:'总花费', val:'$'+t.spend.toFixed(2) },
     { label:'总点击', val:''+t.clicks },
-    { label:'点击率', val:ctr.toFixed(2)+'%' },
-    { label:'CPC', val:'$'+cpc.toFixed(2) },
     { label:'总销量', val:''+t.units },
     { label:'转化率', val:cvr.toFixed(2)+'%' },
     { label:'ACOS', val:acos.toFixed(2)+'%' }
@@ -484,20 +515,48 @@ function renderTabs(){
   $('tabs').innerHTML = DIMENSIONS.map(d =>
     '<div class="tab'+(d.key===currentDim?' active':'')+'" data-dim="'+d.key+'">'+d.label+'</div>'
   ).join('');
-  $('tabs').querySelectorAll('.tab').forEach(t => t.onclick = () => { currentDim = t.dataset.dim; sortState = {field:'ctr',dir:-1}; render(); });
+  $('tabs').querySelectorAll('.tab').forEach(t => t.onclick = () => { currentDim = t.dataset.dim; sortState = {field:'clicks',dir:-1}; render(); });
+}
+
+function fmtNum(v){ return Number(v).toFixed(2); }
+function fmtPct(v){ return Number(v).toFixed(2)+'%'; }
+function tagsHtml(g){ return g.tags.map(t => '<span class="tag tag-'+TAG_META[t].cls+'">'+TAG_META[t].label+'</span>').join(''); }
+
+function cellHtml(g, field){
+  switch(field){
+    case '_key': return '<td class="kw"><span class="kw clamp2">'+cleanKw(g.key)+'</span></td>';
+    case 'tags': return '<td class="tags">'+tagsHtml(g)+'</td>';
+    case 'advice': { const adv = g.advice||'—'; return '<td class="advice" title="'+escAttr(adv)+'"><span class="clamp2">'+adv+'</span></td>'; }
+    case 'matchType': return '<td class="mt">'+matchTypeZh(g)+'</td>';
+    case 'impressions': return '<td class="num">'+g.impressions+'</td>';
+    case 'clicks': return '<td class="num">'+g.clicks+'</td>';
+    case 'ctr': return '<td class="num">'+fmtPct(g.ctr)+'</td>';
+    case 'spend': return '<td class="num">'+fmtNum(g.spend)+'</td>';
+    case 'cpc': return '<td class="num">'+fmtNum(g.cpc)+'</td>';
+    case 'sales': return '<td class="num">'+fmtNum(g.sales)+'</td>';
+    case 'units': return '<td class="num">'+g.units+'</td>';
+    case 'cvr': return '<td class="num">'+fmtPct(g.cvr)+'</td>';
+    case 'acos': return '<td class="num">'+(g.acos>0?fmtPct(g.acos):'—')+'</td>';
+    case 'roas': return '<td class="num">'+(g.roas>0?fmtNum(g.roas):'—')+'</td>';
+  }
+  return '<td></td>';
+}
+function sortVal(g, field){
+  if(field==='tags') return g.tags.join(',');
+  if(field==='matchType') return matchTypeZh(g);
+  if(field==='advice') return g.advice||'';
+  return g[field];
 }
 
 function renderTable(groups){
-  const dim = DIMENSIONS.find(d => d.key===currentDim);
-  const headers = [dim.label,'匹配类型','展示量','点击量','点击率','花费','CPC','销售额','销量','转化率','ACOS','ROAS','标签','建议'];
-  const fields  = [null,'matchType','impressions','clicks','ctr','spend','cpc','sales','units','cvr','acos','roas','tags','advice'];
+  const cols = getCols();
 
-  $('thead').innerHTML = '<tr>' + headers.map((h,i) =>
-    '<th data-i="'+i+'">'+h+(sortState.field===fields[i]?' <span class="arrow">'+(sortState.dir===1?'▲':'▼')+'</span>':'')+'</th>'
+  $('thead').innerHTML = '<tr>' + cols.map((c,i) =>
+    '<th data-i="'+i+'">'+c.label+(sortState.field===c.field?' <span class="arrow">'+(sortState.dir===1?'▲':'▼')+'</span>':'')+'</th>'
   ).join('') + '</tr>';
   $('thead').querySelectorAll('th').forEach(th => th.onclick = () => {
-    const f = fields[+th.dataset.i];
-    if(!f) return;
+    const f = cols[+th.dataset.i].field;
+    if(!f || f==='_key') return;
     if(sortState.field===f) sortState.dir = -sortState.dir;
     else sortState = { field:f, dir:-1 };
     renderTable(groups);
@@ -505,68 +564,41 @@ function renderTable(groups){
 
   const sf = sortState.field;
   let list = groups;
-  if(sf){
+  if(sf && sf!=='_key'){
     list = groups.slice().sort((a,b) => {
-      let va=a[sf], vb=b[sf];
-      if(sf==='tags'){ va=a.tags.join(','); vb=b.tags.join(','); }
-      if(sf==='matchType'){ va=matchTypeZh(a); vb=matchTypeZh(b); }
+      const va = sortVal(a,sf), vb = sortVal(b,sf);
       if(typeof va==='number' && typeof vb==='number') return (va-vb)*sortState.dir;
       return String(va).localeCompare(String(vb))*sortState.dir;
     });
   }
 
   $('rowCount').textContent = '共 '+list.length+' 条';
-
-  const fmtNum = v => Number(v).toFixed(2);
-  const fmtPct = v => Number(v).toFixed(2)+'%';
-  const cell = (v, cls, title) => '<td class="'+(cls||'')+'"'+(title?' title="'+title+'"':'')+'>'+v+'</td>';
-
   $('tbody').innerHTML = list.length
-    ? list.map(g => {
-        const tagsHtml = g.tags.map(t => {
-          const m = TAG_META[t];
-          return '<span class="tag tag-'+m.cls+'">'+m.label+'</span>';
-        }).join('');
-        const adv = g.advice || '—';
-        return '<tr>' +
-          cell('<span class="kw clamp2">'+cleanKw(g.key)+'</span>', 'kw') +
-          cell(matchTypeZh(g), 'mt') +
-          cell(g.impressions, 'num') + cell(g.clicks,'num') + cell(fmtPct(g.ctr),'num') +
-          cell(fmtNum(g.spend),'num') + cell(fmtNum(g.cpc),'num') + cell(fmtNum(g.sales),'num') +
-          cell(g.units,'num') + cell(fmtPct(g.cvr),'num') +
-          cell(g.acos>0?fmtPct(g.acos):'—','num') + cell(g.roas>0?fmtNum(g.roas):'—','num') +
-          cell(tagsHtml, 'tags') +
-          cell('<span class="clamp2">'+adv+'</span>', 'advice', adv) +
-          '</tr>';
-      }).join('')
-    : '<tr><td colspan="14" class="empty">无匹配数据</td></tr>';
+    ? list.map(g => '<tr>' + cols.map(c => cellHtml(g, c.field)).join('') + '</tr>').join('')
+    : '<tr><td colspan="'+cols.length+'" class="empty">无匹配数据</td></tr>';
 }
 
 function cleanKw(k){ return String(k).replace(/^"+|"+$/g,'').trim(); }
 function matchTypeZh(g){ const a = [...g.matchTypes].map(m => MATCH_TYPE_ZH[m]||m); return a.length ? a.join('、') : '—'; }
 
-/* ============ 筛选 & 搜索事件 ============ */
-['fPortfolio','fCampaign','fAdGroup','fTargeting','fTag'].forEach(id => $(id).addEventListener('change', () => render()));
+/* ============ 事件 ============ */
+['fPortfolio','fCampaign','fAdGroup','fTargeting'].forEach(id => $(id).addEventListener('change', () => { refreshCascade(); render(); }));
+$('fTag').addEventListener('change', () => render());
 $('searchBox').addEventListener('input', () => render());
 
 /* ============ 导出 ============ */
 $('exportBtn').addEventListener('click', () => {
   const dim = DIMENSIONS.find(d => d.key===currentDim);
+  const cols = getCols();
   const rows = getFilteredRows();
   let groups = aggregate(rows, dim.field).map(compute);
   groups.forEach(g => { g.tags = tag(g, currentDim); g.advice = advice(g, g.tags, currentDim); });
   const ft = $('fTag').value, kw = $('searchBox').value.trim().toLowerCase();
   const list = groups.filter(g => (!ft || g.tags.includes(ft)) && (!kw || g.key.toLowerCase().includes(kw)));
 
-  const headers = [dim.label,'匹配类型','展示量','点击量','点击率(%)','花费','CPC','销售额','销量','转化率(%)','ACOS(%)','ROAS','标签','建议'];
-  const lines = [headers.join(',')];
+  const lines = [cols.map(c => c.label).join(',')];
   const esc = v => { v = String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
-  list.forEach(g => {
-    const row = [cleanKw(g.key), matchTypeZh(g), g.impressions, g.clicks, g.ctr.toFixed(2), g.spend.toFixed(2), g.cpc.toFixed(2),
-      g.sales.toFixed(2), g.units, g.cvr.toFixed(2), g.acos.toFixed(2), g.roas.toFixed(2),
-      g.tags.map(t => TAG_META[t].label).join('|'), g.advice];
-    lines.push(row.map(esc).join(','));
-  });
+  list.forEach(g => lines.push(cols.map(c => esc(c.csv(g))).join(',')));
   const blob = new Blob(['\ufeff'+lines.join('\n')], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = '广告诊断_'+dim.label+'.csv'; a.click();
